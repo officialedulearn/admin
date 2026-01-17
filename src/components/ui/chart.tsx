@@ -151,9 +151,11 @@ function ChartTooltipContent({
     ? null
     : payload[0]?.payload?.[labelKey ?? ""] || label
 
+  const isValidLabel = tooltipLabel && (typeof tooltipLabel === 'string' || typeof tooltipLabel === 'number')
+
   return (
     <ChartTooltip className={className}>
-      {tooltipLabel && (
+      {isValidLabel && (
         <div className={cn("font-medium", labelClassName)}>
           {labelFormatter ? labelFormatter(tooltipLabel as string) : tooltipLabel}
         </div>
