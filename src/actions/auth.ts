@@ -7,28 +7,32 @@ import { redirect } from "next/navigation";
 export async function loginAction(formData: FormData) {
   const password = formData.get("password") as string;
 
-  console.log("🔑 Login attempt received");
-  
   if (!password) {
-    console.log("❌ No password provided");
     return { error: "Password is required" };
+  }
+
+  // Check if ADMIN_PASSWORD_HASH is set
+  if (!process.env.ADMIN_PASSWORD_HASH) {
+    return {
+      error:
+        "ADMIN_PASSWORD_HASH not configured. Run: node scripts/generate-hash.js YOUR_PASSWORD and add to .env.local",
+    };
   }
 
   const isValid = await verifyPassword(password);
 
   if (!isValid) {
-    console.log("❌ Login failed - invalid password");
-    return { error: "Invalid password" };
+    return {
+      error:
+        "Invalid password. Make sure ADMIN_PASSWORD_HASH in .env.local matches your password hash.",
+    };
   }
 
-  console.log("✅ Login successful - creating session");
-  
   try {
     await createSession();
-    console.log("✅ Session created - returning success");
     return { success: true };
-  } catch (sessionError) {
-    console.error("❌ Failed to create session:", sessionError);
+  } catch (error) {
+    console.error("Session creation error:", error);
     return { error: "Failed to create session. Please try again." };
   }
 }
@@ -37,4 +41,3 @@ export async function logoutAction() {
   await destroySession();
   redirect("/login");
 }
-

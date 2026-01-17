@@ -15,6 +15,7 @@ export default function RewardsPage() {
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [uploadingMetadata, setUploadingMetadata] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<CreateRewardDto>({
     type: "certificate",
@@ -31,11 +32,15 @@ export default function RewardsPage() {
   const loadRewards = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await rewardsService.getAllRewards();
-      setRewards(data);
-    } catch (error) {
-      toast.error("Failed to load rewards");
-      console.error(error);
+      setRewards(data || []);
+    } catch (error: any) {
+      console.error("Failed to load rewards:", error);
+      const errorMessage = error.response?.data?.error || error.message || "Failed to load rewards";
+      setError(errorMessage);
+      toast.error(errorMessage);
+      setRewards([]);
     } finally {
       setLoading(false);
     }
@@ -278,11 +283,32 @@ export default function RewardsPage() {
         ))}
       </div>
 
-      {rewards.length === 0 && !showCreateForm && (
-        <div className="text-center py-12">
-          <Award className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">No rewards yet. Create your first reward!</p>
-        </div>
+      {rewards.length === 0 && !showCreateForm && !loading && (
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center">
+              {error ? (
+                <>
+                  <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                  <p className="text-red-500 mb-2 font-medium">Failed to load rewards</p>
+                  <p className="text-sm text-muted-foreground mb-4">{error}</p>
+                  <Button onClick={loadRewards} variant="outline">
+                    Retry
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Award className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">No rewards yet. Create your first reward!</p>
+                  <Button onClick={() => setShowCreateForm(true)} variant="success">
+                    <Plus className="w-4 h-4" />
+                    Create Reward
+                  </Button>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

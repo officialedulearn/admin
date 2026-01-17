@@ -1,14 +1,8 @@
-import axios from 'axios';
-import { config } from '../lib/config';
-
-const getHeaders = () => ({
-  'x-marketplace-key': config.marketplaceApiKey,
-  'Content-Type': 'application/json',
-});
+import axios from "axios";
 
 export interface Reward {
   id: string;
-  type: 'certificate' | 'points';
+  type: "certificate" | "points";
   title: string;
   description: string;
   imageUrl?: string;
@@ -17,7 +11,7 @@ export interface Reward {
 }
 
 export interface CreateRewardDto {
-  type: 'certificate' | 'points';
+  type: "certificate" | "points";
   title: string;
   description: string;
   imageUrl?: string;
@@ -27,64 +21,36 @@ export interface CreateRewardDto {
 export const rewardsService = {
   async getAllRewards(): Promise<Reward[]> {
     try {
-      const response = await axios.get(`${config.apiUrl}/rewards`, {
-        headers: getHeaders(),
+      const response = await axios.get("/api/marketplace/rewards", {
+        timeout: 10000,
       });
-      return response.data;
-    } catch (error) {
-      console.error('Failed to fetch rewards:', error);
+      return response.data || [];
+    } catch (error: any) {
+      console.error("Failed to fetch rewards:", error);
+      if (error.response?.status === 404 || error.response?.status === 502) {
+        return [];
+      }
       throw error;
     }
   },
 
   async createReward(data: CreateRewardDto): Promise<Reward> {
-    try {
-      const response = await axios.post(`${config.apiUrl}/rewards`, data, {
-        headers: getHeaders(),
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Failed to create reward:', error);
-      throw error;
-    }
+    const response = await axios.post("/api/marketplace/rewards", data);
+    return response.data;
   },
 
   async deleteReward(id: string): Promise<void> {
-    try {
-      await axios.delete(`${config.apiUrl}/rewards/${id}`, {
-        headers: getHeaders(),
-      });
-    } catch (error) {
-      console.error('Failed to delete reward:', error);
-      throw error;
-    }
+    await axios.delete(`/api/marketplace/rewards/${id}`);
   },
 
   async awardRewardToUser(userId: string, rewardId: string): Promise<void> {
-    try {
-      await axios.post(
-        `${config.apiUrl}/rewards/award`,
-        { userId, rewardId },
-        {
-          headers: getHeaders(),
-        }
-      );
-    } catch (error) {
-      console.error('Failed to award reward:', error);
-      throw error;
-    }
+    await axios.post("/api/marketplace/rewards/award", { userId, rewardId });
   },
 
-  async getRewardRecipients(rewardId: string): Promise<any[]> {
-    try {
-      const response = await axios.get(`${config.apiUrl}/rewards/recipients/${rewardId}`, {
-        headers: getHeaders(),
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Failed to fetch reward recipients:', error);
-      throw error;
-    }
+  async getRewardRecipients(rewardId: string): Promise<unknown[]> {
+    const response = await axios.get(
+      `/api/marketplace/rewards/recipients/${rewardId}`
+    );
+    return response.data;
   },
 };
-

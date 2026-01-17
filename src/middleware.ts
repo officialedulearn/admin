@@ -7,24 +7,86 @@ interface SessionData {
   loginTime?: number;
 }
 
-const sessionPassword = process.env.SESSION_SECRET || process.env.NEXT_PUBLIC_SESSION_SECRET || "complex_password_at_least_32_characters_long_for_security";
+interface RateLimitEntry {
+  attempts: number;
+  firstAttempt: number;
+}
+
+const rateLimitMap = new Map<string, RateLimitEntry>();
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
+const MAX_ATTEMPTS = 5;
+
+function getClientIP(request: NextRequest): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
+  }
+  return request.headers.get("x-real-ip") || "unknown";
+}
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry) {
+    return false;
+  }
+
+  if (now - entry.firstAttempt > RATE_LIMIT_WINDOW) {
+    rateLimitMap.delete(ip);
+    return false;
+  }
+
+  return entry.attempts >= MAX_ATTEMPTS;
+}
+
+function recordAttempt(ip: string): void {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now - entry.firstAttempt > RATE_LIMIT_WINDOW) {
+    rateLimitMap.set(ip, { attempts: 1, firstAttempt: now });
+  } else {
+    entry.attempts++;
+  }
+}
+
+function getSessionSecret(): string {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error("SESSION_SECRET must be at least 32 characters");
+  }
+  return secret;
+}
+
 const cookieName = "edulearn_admin_session";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  if (pathname === "/login" && request.method === "POST") {
+    const ip = getClientIP(request);
+
+    if (isRateLimited(ip)) {
+      return NextResponse.json(
+        { error: "Too many login attempts. Please try again in 15 minutes." },
+        { status: 429 }
+      );
+    }
+
+    recordAttempt(ip);
+  }
+
   try {
     const sessionCookie = request.cookies.get(cookieName)?.value;
-    
     let session: SessionData = { isAuthenticated: false };
-    
+
     if (sessionCookie) {
       try {
         session = await unsealData<SessionData>(sessionCookie, {
-          password: sessionPassword,
+          password: getSessionSecret(),
         });
-      } catch (error) {
-        console.error("Failed to decrypt session:", error);
+      } catch {
         session = { isAuthenticated: false };
       }
     }
@@ -36,13 +98,16 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
+    if (pathname.startsWith("/api/health")) {
+      return NextResponse.next();
+    }
+
     if (!session.isAuthenticated) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
     return NextResponse.next();
-  } catch (error) {
-    console.error("Middleware error:", error);
+  } catch {
     if (pathname.startsWith("/login")) {
       return NextResponse.next();
     }
@@ -52,6 +117,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.svg|.*\\.png|.*\\.jpg|.*\\.otf).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.svg|.*\\.png|.*\\.jpg|.*\\.otf|api/health).*)",
   ],
 };

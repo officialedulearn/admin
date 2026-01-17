@@ -6,16 +6,31 @@ export interface SessionData {
   loginTime?: number;
 }
 
-// Session configuration
-// Note: Use SESSION_SECRET (server-side only) for security
-// NEXT_PUBLIC_ vars are exposed to client, so we prefer SESSION_SECRET
+function getSessionSecret(): string {
+  const secret = process.env.SESSION_SECRET;
+
+  if (!secret) {
+    throw new Error(
+      "SESSION_SECRET environment variable is required. Generate a 32+ character random string."
+    );
+  }
+
+  if (secret.length < 32) {
+    throw new Error(
+      "SESSION_SECRET must be at least 32 characters long for security."
+    );
+  }
+
+  return secret;
+}
+
 const sessionOptions = {
-  password: process.env.SESSION_SECRET || process.env.NEXT_PUBLIC_SESSION_SECRET || "complex_password_at_least_32_characters_long_for_security",
+  password: getSessionSecret(),
   cookieName: "edulearn_admin_session",
   cookieOptions: {
     secure: process.env.NODE_ENV === "production",
     httpOnly: true,
-    maxAge: 60 * 60 * 24, // 24 hours
+    maxAge: 60 * 60 * 24,
   },
 };
 
@@ -40,4 +55,3 @@ export async function isAuthenticated(): Promise<boolean> {
   const session = await getSession();
   return session.isAuthenticated === true;
 }
-

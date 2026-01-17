@@ -1,10 +1,4 @@
-import axios from 'axios';
-import { config } from '../lib/config';
-
-const getHeaders = () => ({
-  'x-admin-key': config.adminApiKey,
-  'Content-Type': 'application/json',
-});
+import axios from "axios";
 
 export interface SignupStats {
   daily: { date: string; count: number }[];
@@ -49,42 +43,88 @@ export interface AdminUser {
   expoPushToken: string | null;
 }
 
+export interface EngagementMetrics {
+  dau: number;
+  wau: number;
+  mau: number;
+  featureUsage: {
+    quiz: number;
+    chat: number;
+    streak: number;
+  };
+  totalUsers: number;
+  activeRate: string;
+}
+
+export interface RetentionData {
+  cohort: string;
+  totalUsers: number;
+  retained: number;
+  retentionRate: string;
+}
+
+export interface ContentAnalytics {
+  topTopics: { topic: string; count: number }[];
+  totalChats: number;
+  totalQuizzes: number;
+  avgQuizPerUser: string;
+}
+
+export interface RevenueMetrics {
+  totalRevenue: string;
+  premiumUsers: number;
+  conversionRate: string;
+  arpu: string;
+  arppu: string;
+  totalReferrals: number;
+  usersWithReferrals: number;
+}
+
 export const adminService = {
-  async getSignupStats(startDate?: string, endDate?: string): Promise<SignupStats> {
+  async getSignupStats(
+    startDate?: string,
+    endDate?: string
+  ): Promise<SignupStats> {
     const params = new URLSearchParams();
-    if (startDate) params.append('startDate', startDate);
-    if (endDate) params.append('endDate', endDate);
-    
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+
     const response = await axios.get(
-      `${config.apiUrl}/admin/analytics/signups?${params.toString()}`,
-      { headers: getHeaders() }
+      `/api/admin/analytics/signups?${params.toString()}`
     );
     return response.data;
   },
 
   async getPlatformMetrics(): Promise<PlatformMetrics> {
-    const response = await axios.get(
-      `${config.apiUrl}/admin/analytics/metrics`,
-      { headers: getHeaders() }
-    );
+    const response = await axios.get("/api/admin/analytics/metrics");
     return response.data;
   },
 
   async getActivityTrends(days: number = 30): Promise<ActivityTrend[]> {
     const response = await axios.get(
-      `${config.apiUrl}/admin/analytics/activity-trends?days=${days}`,
-      { headers: getHeaders() }
+      `/api/admin/analytics/activity-trends?days=${days}`
     );
     return response.data;
   },
 
   async getAllUsers(): Promise<AdminUser[]> {
-    const response = await axios.get(
-      `${config.apiUrl}/admin/users`,
-      { headers: getHeaders() }
-    );
+    const response = await axios.get("/api/admin/users");
+    return response.data;
+  },
+
+  async getEngagementMetrics(): Promise<EngagementMetrics> {
+    const response = await axios.get("/api/admin/analytics/engagement");
+    return response.data;
+  },
+
+  async getRetentionMetrics(): Promise<RetentionData[]> {
+    const response = await axios.get("/api/admin/analytics/retention");
+    return response.data;
+  },  async getContentAnalytics(): Promise<ContentAnalytics> {
+    const response = await axios.get("/api/admin/analytics/content");
+    return response.data;
+  },  async getRevenueMetrics(): Promise<RevenueMetrics> {
+    const response = await axios.get("/api/admin/analytics/revenue");
     return response.data;
   },
 };
-
-

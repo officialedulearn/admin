@@ -1,10 +1,4 @@
-import axios from 'axios';
-import { config } from '../lib/config';
-
-const getHeaders = () => ({
-  'x-admin-key': config.adminApiKey,
-  'Content-Type': 'application/json',
-});
+import axios from "axios";
 
 export interface EmailResult {
   sent: number;
@@ -12,23 +6,27 @@ export interface EmailResult {
 }
 
 export const emailService = {
-  async broadcastEmail(subject: string, htmlContent: string): Promise<EmailResult> {
-    const response = await axios.post(
-      `${config.apiUrl}/admin/emails/broadcast`,
-      { subject, htmlContent },
-      { headers: getHeaders() }
-    );
+  async broadcastEmail(
+    subject: string,
+    htmlContent: string
+  ): Promise<EmailResult> {
+    const response = await axios.post("/api/admin/emails/broadcast", {
+      subject,
+      htmlContent,
+    });
     return response.data;
   },
 
-  async sendEmailToUsers(emails: string[], subject: string, htmlContent: string): Promise<EmailResult> {
-    const response = await axios.post(
-      `${config.apiUrl}/admin/emails/send`,
-      { emails, subject, htmlContent },
-      { headers: getHeaders() }
-    );
+  async sendEmailToUsers(
+    emails: string[],
+    subject: string,
+    htmlContent: string
+  ): Promise<EmailResult> {
+    const response = await axios.post("/api/admin/emails/send", {
+      emails,
+      subject,
+      htmlContent,
+    });
     return response.data;
   },
 };
-
-

@@ -21,10 +21,25 @@ export default function NotificationsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [apiStatus, setApiStatus] = useState<"checking" | "online" | "offline">("checking");
 
   useEffect(() => {
     loadUsers();
+    checkApiStatus();
   }, []);
+
+  const checkApiStatus = async () => {
+    try {
+      const response = await fetch("/api/health", { signal: AbortSignal.timeout(5000) });
+      if (response.ok) {
+        setApiStatus("online");
+      } else {
+        setApiStatus("offline");
+      }
+    } catch {
+      setApiStatus("offline");
+    }
+  };
 
   useEffect(() => {
     if (searchQuery) {
@@ -79,9 +94,22 @@ export default function NotificationsPage() {
       setTitle("");
       setContent("");
       setSelectedUsers([]);
-    } catch (error) {
-      toast.error("Failed to send notification");
-      console.error(error);
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to send notification";
+      
+      console.error("Notification error:", error);
+      
+      if (errorMessage.includes("timeout") || errorMessage.includes("API server")) {
+        toast.error(errorMessage, {
+          duration: 8000,
+          description: "Make sure your API server is running at http://localhost:3001",
+        });
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -104,8 +132,30 @@ export default function NotificationsPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground mb-1">Notifications</h1>
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-3xl font-bold text-foreground">Notifications</h1>
+          {apiStatus === "offline" && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-sm text-red-500">API Server Offline</span>
+            </div>
+          )}
+          {apiStatus === "online" && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#00FF80]/10 border border-[#00FF80]/20 rounded-lg">
+              <div className="w-2 h-2 rounded-full bg-[#00FF80]" />
+              <span className="text-sm text-[#00FF80]">API Server Online</span>
+            </div>
+          )}
+        </div>
         <p className="text-muted-foreground">Send push notifications to users</p>
+        {apiStatus === "offline" && (
+          <div className="mt-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+            <p className="text-sm text-yellow-500">
+              ⚠️ Cannot connect to API server. Make sure your API server is running at{" "}
+              <code className="bg-black/20 px-1 rounded">http://localhost:3001</code>
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -256,14 +306,30 @@ export default function NotificationsPage() {
             variant="success"
             className="w-full"
             onClick={handleSend}
-            disabled={loading || !title.trim() || !content.trim()}
+            disabled={
+              loading ||
+              !title.trim() ||
+              !content.trim() ||
+              apiStatus === "offline" ||
+              (!isBroadcast && selectedUsers.length === 0)
+            }
           >
             {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Sending...
+              </>
+            ) : apiStatus === "offline" ? (
+              <>
+                <Bell className="w-4 h-4 mr-2" />
+                API Server Offline
+              </>
             ) : (
-              <Send className="w-4 h-4 mr-2" />
+              <>
+                <Send className="w-4 h-4 mr-2" />
+                {isBroadcast ? "Send to All Users" : `Send to ${selectedUsers.length} Users`}
+              </>
             )}
-            {loading ? "Sending..." : isBroadcast ? "Send to All Users" : `Send to ${selectedUsers.length} Users`}
           </Button>
         </CardContent>
       </Card>

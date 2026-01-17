@@ -15,6 +15,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Shield,
+  MessageSquare,
+  Lightbulb,
+  FileDown,
+  Users2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/actions/auth";
@@ -29,6 +33,16 @@ const navItems = [
     title: "Users",
     href: "/users",
     icon: Users,
+  },
+  {
+    title: "Communities",
+    href: "/communities",
+    icon: Users2,
+  },
+  {
+    title: "Feedback",
+    href: "/feedback",
+    icon: MessageSquare,
   },
   {
     title: "Rewards",
@@ -54,6 +68,16 @@ const navItems = [
     title: "Analytics",
     href: "/analytics",
     icon: BarChart3,
+  },
+  {
+    title: "Insights",
+    href: "/insights",
+    icon: Lightbulb,
+  },
+  {
+    title: "Reports",
+    href: "/reports",
+    icon: FileDown,
   },
 ];
 

@@ -1,15 +1,9 @@
-import axios from 'axios';
-import { config } from '../lib/config';
-
-const getHeaders = () => ({
-  'x-marketplace-key': config.marketplaceApiKey,
-  'Content-Type': 'application/json',
-});
+import axios from "axios";
 
 export interface Activity {
   id: string;
   userId: string;
-  type: 'quiz' | 'chat' | 'streak';
+  type: "quiz" | "chat" | "streak";
   title?: string;
   xpEarned: number;
   createdAt: string;
@@ -17,27 +11,12 @@ export interface Activity {
 
 export const activityService = {
   async getAllActivities(): Promise<Activity[]> {
-    try {
-      const response = await axios.get(`${config.apiUrl}/activity`, {
-        headers: getHeaders(),
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Failed to fetch activities:', error);
-      throw error;
-    }
+    const response = await axios.get("/api/marketplace/activity");
+    return response.data;
   },
 
   async getActivitiesByUser(userId: string): Promise<Activity[]> {
-    try {
-      const response = await axios.get(`${config.apiUrl}/activity/user/${userId}`, {
-        headers: getHeaders(),
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Failed to fetch user activities:', error);
-      throw error;
-    }
+    const response = await axios.get(`/api/marketplace/activity/user/${userId}`);
+    return response.data;
   },
 };
-

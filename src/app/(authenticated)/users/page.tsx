@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Search, Loader2, Crown, Shield, Mail } from "lucide-react";
+import {
+  Users,
+  Search,
+  Loader2,
+  Crown,
+  Shield,
+  Mail,
+  Download,
+  Filter,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,31 +22,46 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { adminService, type AdminUser } from "@/services/admin.service";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+type FilterType = "all" | "premium" | "verified" | "active";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     loadUsers();
   }, []);
 
   useEffect(() => {
+    let filtered = users;
+
+    if (activeFilter === "premium") {
+      filtered = users.filter((u) => u.isPremium);
+    } else if (activeFilter === "verified") {
+      filtered = users.filter((u) => u.verified);
+    } else if (activeFilter === "active") {
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      filtered = users.filter((u) => new Date(u.lastLoggedIn) >= weekAgo);
+    }
+
     if (searchQuery) {
-      const filtered = users.filter(
+      filtered = filtered.filter(
         (user) =>
           user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
           user.username.toLowerCase().includes(searchQuery.toLowerCase())
       );
-      setFilteredUsers(filtered);
-    } else {
-      setFilteredUsers(users);
     }
-  }, [searchQuery, users]);
+
+    setFilteredUsers(filtered);
+  }, [searchQuery, users, activeFilter]);
 
   const loadUsers = async () => {
     try {
@@ -51,6 +75,44 @@ export default function UsersPage() {
       setLoading(false);
     }
   };
+
+  const exportToCSV = async () => {
+    try {
+      setExporting(true);
+
+      const headers = ["Name", "Username", "Email", "Level", "XP", "Premium", "Verified", "Last Active"];
+      const rows = filteredUsers.map((user) => [
+        user.name,
+        user.username,
+        user.email,
+        user.level,
+        user.xp.toString(),
+        user.isPremium ? "Yes" : "No",
+        user.verified ? "Yes" : "No",
+        new Date(user.lastLoggedIn).toISOString(),
+      ]);
+
+      const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${c}"`).join(","))].join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `users_${activeFilter}_${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Exported ${filteredUsers.length} users to CSV`);
+    } catch (error) {
+      toast.error("Failed to export users");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const activeUsersCount = users.filter((u) => new Date(u.lastLoggedIn) >= weekAgo).length;
 
   if (loading) {
     return (
@@ -77,11 +139,30 @@ export default function UsersPage() {
               className="pl-10 w-[300px]"
             />
           </div>
+          <Button
+            variant="outline"
+            onClick={exportToCSV}
+            disabled={exporting || filteredUsers.length === 0}
+            className="gap-2"
+          >
+            {exporting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            Export CSV
+          </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-card border border-border rounded-xl p-4">
+        <div
+          className={cn(
+            "bg-card border rounded-xl p-4 cursor-pointer transition-all",
+            activeFilter === "all" ? "border-[#00FF80]" : "border-border hover:border-muted-foreground"
+          )}
+          onClick={() => setActiveFilter("all")}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Total Users</p>
@@ -90,7 +171,13 @@ export default function UsersPage() {
             <Users className="w-8 h-8 text-[#00FF80]" />
           </div>
         </div>
-        <div className="bg-card border border-border rounded-xl p-4">
+        <div
+          className={cn(
+            "bg-card border rounded-xl p-4 cursor-pointer transition-all",
+            activeFilter === "premium" ? "border-[#F59E0B]" : "border-border hover:border-muted-foreground"
+          )}
+          onClick={() => setActiveFilter("premium")}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Premium Users</p>
@@ -99,7 +186,13 @@ export default function UsersPage() {
             <Crown className="w-8 h-8 text-[#F59E0B]" />
           </div>
         </div>
-        <div className="bg-card border border-border rounded-xl p-4">
+        <div
+          className={cn(
+            "bg-card border rounded-xl p-4 cursor-pointer transition-all",
+            activeFilter === "verified" ? "border-[#3B82F6]" : "border-border hover:border-muted-foreground"
+          )}
+          onClick={() => setActiveFilter("verified")}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Verified Users</p>
@@ -108,16 +201,34 @@ export default function UsersPage() {
             <Shield className="w-8 h-8 text-[#3B82F6]" />
           </div>
         </div>
-        <div className="bg-card border border-border rounded-xl p-4">
+        <div
+          className={cn(
+            "bg-card border rounded-xl p-4 cursor-pointer transition-all",
+            activeFilter === "active" ? "border-[#8B5CF6]" : "border-border hover:border-muted-foreground"
+          )}
+          onClick={() => setActiveFilter("active")}
+        >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">With Push Token</p>
-              <p className="text-2xl font-bold">{users.filter((u) => u.expoPushToken).length}</p>
+              <p className="text-sm text-muted-foreground">Active (7 days)</p>
+              <p className="text-2xl font-bold">{activeUsersCount}</p>
             </div>
             <Mail className="w-8 h-8 text-[#8B5CF6]" />
           </div>
         </div>
       </div>
+
+      {activeFilter !== "all" && (
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">
+            Showing {filteredUsers.length} {activeFilter} users
+          </span>
+          <Button variant="ghost" size="sm" onClick={() => setActiveFilter("all")}>
+            Clear filter
+          </Button>
+        </div>
+      )}
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <Table>
@@ -153,7 +264,9 @@ export default function UsersPage() {
                     {user.level}
                   </span>
                 </TableCell>
-                <TableCell className="text-[#00FF80] font-medium">{user.xp.toLocaleString()}</TableCell>
+                <TableCell className="text-[#00FF80] font-medium">
+                  {user.xp.toLocaleString()}
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     {user.isPremium && (
@@ -188,5 +301,3 @@ export default function UsersPage() {
     </div>
   );
 }
-
-
