@@ -31,6 +31,7 @@ export default function EmailsPage() {
   const [loading, setLoading] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
 
   useEffect(() => {
     loadUsers();
@@ -198,7 +199,38 @@ export default function EmailsPage() {
           <CardTitle className="text-[#00FF80]">🎉 v2.5 Announcement Email</CardTitle>
           <CardDescription>Send the pre-designed v2.5 feature announcement to all users</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Input
+              type="email"
+              placeholder="Your email for test"
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+              className="flex-1"
+            />
+            <Button
+              variant="outline"
+              onClick={async () => {
+                if (!testEmail.trim()) {
+                  toast.error("Enter your email to send a test");
+                  return;
+                }
+                try {
+                  setLoading(true);
+                  await emailService.sendV25AnnouncementTest(testEmail.trim());
+                  toast.success(`Test email sent to ${testEmail}`);
+                } catch (error) {
+                  toast.error("Failed to send test email");
+                  console.error(error);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send Test"}
+            </Button>
+          </div>
           <Button
             variant="success"
             className="w-full"
