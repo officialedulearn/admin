@@ -35,4 +35,15 @@ export const emailService = {
     const response = await axios.post("/api/admin/emails/v25-announcement");
     return response.data;
   },
+
+  async sendV25AnnouncementTest(
+    email: string,
+    name?: string
+  ): Promise<{ sent: boolean }> {
+    const response = await axios.post(
+      "/api/admin/emails/v25-announcement/test",
+      { email, name }
+    );
+    return response.data;
+  },
 };
