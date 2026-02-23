@@ -193,6 +193,40 @@ export default function EmailsPage() {
         </Card>
       </div>
 
+      <Card className="border-[#00FF80]/30 bg-card/50">
+        <CardHeader>
+          <CardTitle className="text-[#00FF80]">🎉 v2.5 Announcement Email</CardTitle>
+          <CardDescription>Send the pre-designed v2.5 feature announcement to all users</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="success"
+            className="w-full"
+            onClick={async () => {
+              if (loading) return;
+              try {
+                setLoading(true);
+                const result = await emailService.sendV25Announcement();
+                toast.success(`v2.5 Announcement sent! ${result.sent} delivered, ${result.failed} failed (Total: ${result.total})`);
+              } catch (error) {
+                toast.error("Failed to send v2.5 announcement");
+                console.error(error);
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
+          >
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            ) : (
+              <Send className="w-4 h-4 mr-2" />
+            )}
+            {loading ? "Sending..." : "Send v2.5 Announcement to All Users"}
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Compose Email</CardTitle>
