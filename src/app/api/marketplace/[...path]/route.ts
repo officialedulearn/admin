@@ -6,7 +6,7 @@ async function proxyRequest(
   params: Promise<{ path: string[] }>
 ) {
   const { path } = await params;
-  const { apiUrl, marketplaceApiKey } = getServerConfig();
+  const { apiUrl, marketplaceApiKey, adminApiKey } = getServerConfig();
 
   if (!marketplaceApiKey) {
     console.error("❌ MARKETPLACE_API_KEY is not set in environment variables");
@@ -27,6 +27,7 @@ async function proxyRequest(
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     "x-marketplace-key": marketplaceApiKey,
+    "x-admin-key": adminApiKey,
   };
 
   if (process.env.NODE_ENV === "development") {

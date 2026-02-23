@@ -15,7 +15,7 @@ export async function loginAction(formData: FormData) {
   if (!process.env.ADMIN_PASSWORD_HASH) {
     return {
       error:
-        "ADMIN_PASSWORD_HASH not configured. Run: node scripts/generate-hash.js YOUR_PASSWORD and add to .env.local",
+        "ADMIN_PASSWORD_HASH not configured. Run: node scripts/setup-env.js",
     };
   }
 
@@ -24,7 +24,7 @@ export async function loginAction(formData: FormData) {
   if (!isValid) {
     return {
       error:
-        "Invalid password. Make sure ADMIN_PASSWORD_HASH in .env.local matches your password hash.",
+        "Invalid password. Make sure ADMIN_PASSWORD_HASH in .env matches your password hash.",
     };
   }
 

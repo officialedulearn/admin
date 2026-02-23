@@ -3,6 +3,7 @@ import axios from "axios";
 export interface EmailResult {
   sent: number;
   failed: number;
+  total?: number;
 }
 
 export const emailService = {
@@ -27,6 +28,11 @@ export const emailService = {
       subject,
       htmlContent,
     });
+    return response.data;
+  },
+
+  async sendV25Announcement(): Promise<EmailResult> {
+    const response = await axios.post("/api/admin/emails/v25-announcement");
     return response.data;
   },
 };
