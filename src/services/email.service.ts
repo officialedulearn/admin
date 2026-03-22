@@ -6,6 +6,13 @@ export interface EmailResult {
   total?: number;
 }
 
+export type EngagementTemplateId =
+  | "come-back-soon"
+  | "refer-friends"
+  | "streak-reminder"
+  | "eddy-tip"
+  | "referral-superstar";
+
 export const emailService = {
   async broadcastEmail(
     subject: string,
@@ -43,6 +50,41 @@ export const emailService = {
     const response = await axios.post(
       "/api/admin/emails/v25-announcement/test",
       { email, name }
+    );
+    return response.data;
+  },
+
+  async getPreviewHtml(
+    template: EngagementTemplateId,
+    params?: { name?: string; referralCode?: string; referralCount?: number }
+  ): Promise<string> {
+    const searchParams = new URLSearchParams();
+    if (params?.name) searchParams.set("name", params.name);
+    if (params?.referralCode) searchParams.set("referralCode", params.referralCode);
+    if (params?.referralCount != null) searchParams.set("referralCount", String(params.referralCount));
+    const query = searchParams.toString();
+    const url = `/api/admin/emails/preview/${template}${query ? `?${query}` : ""}`;
+    const response = await axios.get<{ html: string }>(url);
+    return response.data.html;
+  },
+
+  async sendEngagementBroadcast(
+    template: EngagementTemplateId
+  ): Promise<EmailResult> {
+    const response = await axios.post(
+      `/api/admin/emails/engagement/${template}/broadcast`
+    );
+    return response.data;
+  },
+
+  async sendEngagementTest(
+    template: EngagementTemplateId,
+    email: string,
+    params?: { name?: string; referralCode?: string; referralCount?: number }
+  ): Promise<{ sent: boolean }> {
+    const response = await axios.post(
+      `/api/admin/emails/engagement/${template}/test`,
+      { email, ...params }
     );
     return response.data;
   },
