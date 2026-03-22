@@ -5,11 +5,19 @@ import { Mail, Send, Users, User, Loader2, Eye, EyeOff, Search, CheckCircle2 } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { emailService } from "@/services/email.service";
+import { emailService, type EngagementTemplateId } from "@/services/email.service";
 import { adminService, type AdminUser } from "@/services/admin.service";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
+
+const ENGAGEMENT_TEMPLATES: { id: EngagementTemplateId; label: string }[] = [
+  { id: "come-back-soon", label: "Come Back Soon" },
+  { id: "refer-friends", label: "Refer Friends, Earn Together" },
+  { id: "streak-reminder", label: "Streak Reminder" },
+  { id: "eddy-tip", label: "Eddy's Weekly Tip" },
+  { id: "referral-superstar", label: "Referral Superstar" },
+];
 
 const TiptapEditor = dynamic(() => import("@/components/TiptapEditor"), {
   ssr: false,
@@ -32,6 +40,13 @@ export default function EmailsPage() {
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
   const [testEmail, setTestEmail] = useState("");
+  const [engagementTemplate, setEngagementTemplate] = useState<EngagementTemplateId>("come-back-soon");
+  const [engagementPreviewHtml, setEngagementPreviewHtml] = useState<string | null>(null);
+  const [engagementPreviewName, setEngagementPreviewName] = useState("Alex");
+  const [engagementPreviewCode, setEngagementPreviewCode] = useState("ABC123");
+  const [engagementPreviewCount, setEngagementPreviewCount] = useState(5);
+  const [engagementTestEmail, setEngagementTestEmail] = useState("");
+  const [engagementLoading, setEngagementLoading] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -193,6 +208,148 @@ export default function EmailsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="border-[#00FF80]/30 bg-card/50">
+        <CardHeader>
+          <CardTitle className="text-[#00FF80]">🐸 Eddy Engagement Templates</CardTitle>
+          <CardDescription>
+            Pre-designed emails from Eddy to drive app opens. Preview, test, or broadcast to all.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Template</label>
+            <select
+              value={engagementTemplate}
+              onChange={(e) => {
+                setEngagementTemplate(e.target.value as EngagementTemplateId);
+                setEngagementPreviewHtml(null);
+              }}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              {ENGAGEMENT_TEMPLATES.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Preview params (optional)</label>
+              <div className="space-y-2">
+                <Input
+                  placeholder="Name"
+                  value={engagementPreviewName}
+                  onChange={(e) => setEngagementPreviewName(e.target.value)}
+                />
+                {(engagementTemplate === "refer-friends" || engagementTemplate === "referral-superstar") && (
+                  <>
+                    <Input
+                      placeholder="Referral code"
+                      value={engagementPreviewCode}
+                      onChange={(e) => setEngagementPreviewCode(e.target.value)}
+                    />
+                    {engagementTemplate === "referral-superstar" && (
+                      <Input
+                        type="number"
+                        placeholder="Referral count"
+                        value={engagementPreviewCount}
+                        onChange={(e) => setEngagementPreviewCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      />
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    setEngagementLoading(true);
+                    const html = await emailService.getPreviewHtml(engagementTemplate, {
+                      name: engagementPreviewName,
+                      referralCode: engagementPreviewCode,
+                      referralCount: engagementTemplate === "referral-superstar" ? engagementPreviewCount : undefined,
+                    });
+                    setEngagementPreviewHtml(html);
+                  } catch (err) {
+                    toast.error("Failed to load preview");
+                    console.error(err);
+                  } finally {
+                    setEngagementLoading(false);
+                  }
+                }}
+                disabled={engagementLoading}
+              >
+                {engagementLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4 mr-1" />}
+                Preview
+              </Button>
+            </div>
+          </div>
+          {engagementPreviewHtml && (
+            <div
+              className="border border-border rounded-lg p-4 min-h-[200px] bg-white text-black overflow-auto max-h-[400px]"
+              dangerouslySetInnerHTML={{ __html: engagementPreviewHtml }}
+            />
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Input
+              type="email"
+              placeholder="Test email"
+              value={engagementTestEmail}
+              onChange={(e) => setEngagementTestEmail(e.target.value)}
+              className="w-48"
+            />
+            <Button
+              variant="outline"
+              onClick={async () => {
+                if (!engagementTestEmail.trim()) {
+                  toast.error("Enter email for test");
+                  return;
+                }
+                try {
+                  setEngagementLoading(true);
+                  await emailService.sendEngagementTest(engagementTemplate, engagementTestEmail.trim(), {
+                    name: engagementPreviewName,
+                    referralCode: engagementPreviewCode,
+                    referralCount: engagementTemplate === "referral-superstar" ? engagementPreviewCount : undefined,
+                  });
+                  toast.success(`Test sent to ${engagementTestEmail}`);
+                } catch (err) {
+                  toast.error("Failed to send test");
+                  console.error(err);
+                } finally {
+                  setEngagementLoading(false);
+                }
+              }}
+              disabled={engagementLoading}
+            >
+              Send Test
+            </Button>
+            <Button
+              variant="success"
+              onClick={async () => {
+                try {
+                  setEngagementLoading(true);
+                  const result = await emailService.sendEngagementBroadcast(engagementTemplate);
+                  toast.success(`Broadcast sent! ${result.sent} delivered, ${result.failed} failed (Total: ${result.total ?? result.sent + result.failed})`);
+                } catch (err) {
+                  toast.error("Failed to broadcast");
+                  console.error(err);
+                } finally {
+                  setEngagementLoading(false);
+                }
+              }}
+              disabled={engagementLoading}
+            >
+              {engagementLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+              Broadcast to All
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="border-[#00FF80]/30 bg-card/50">
         <CardHeader>
