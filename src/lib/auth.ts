@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import type { AdminRole } from "./admin-session-types";
 
-function normalizeHash(raw: string | undefined): string | null {
+export function parseBcryptHash(raw: string | undefined): string | null {
   if (!raw) {
     return null;
   }
@@ -10,6 +10,10 @@ function normalizeHash(raw: string | undefined): string | null {
     return null;
   }
   return trimmed;
+}
+
+export function bcryptEnvLooksInvalid(raw: string | undefined): boolean {
+  return Boolean(raw?.trim()) && parseBcryptHash(raw) === null;
 }
 
 async function compareBcrypt(password: string, hash: string): Promise<boolean> {
@@ -21,7 +25,7 @@ async function compareBcrypt(password: string, hash: string): Promise<boolean> {
 }
 
 export async function verifyPassword(password: string): Promise<boolean> {
-  const hash = normalizeHash(process.env.ADMIN_PASSWORD_HASH);
+  const hash = parseBcryptHash(process.env.ADMIN_PASSWORD_HASH);
   if (!hash) {
     if (process.env.NODE_ENV === "development") {
       console.error("❌ ADMIN_PASSWORD_HASH is not set in environment variables");
@@ -40,7 +44,7 @@ export async function verifyPassword(password: string): Promise<boolean> {
 }
 
 export async function verifyUploaderPassword(password: string): Promise<boolean> {
-  const hash = normalizeHash(process.env.UPLOADER_PASSWORD_HASH);
+  const hash = parseBcryptHash(process.env.UPLOADER_PASSWORD_HASH);
   if (!hash) {
     return false;
   }
