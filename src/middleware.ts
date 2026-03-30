@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { unsealData } from "iron-session";
-
-interface SessionData {
-  isAuthenticated: boolean;
-  loginTime?: number;
-}
+import type { AdminRole, SessionData } from "@/lib/admin-session-types";
 
 interface RateLimitEntry {
   attempts: number;
@@ -13,7 +9,7 @@ interface RateLimitEntry {
 }
 
 const rateLimitMap = new Map<string, RateLimitEntry>();
-const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
 
 function getClientIP(request: NextRequest): string {
@@ -61,6 +57,21 @@ function getSessionSecret(): string {
 
 const cookieName = "edulearn_admin_session";
 
+function effectiveRole(session: SessionData): AdminRole {
+  return session.role ?? "admin";
+}
+
+function isRewardsPagePath(pathname: string): boolean {
+  return pathname === "/rewards" || pathname.startsWith("/rewards/");
+}
+
+function isUploaderMarketplaceAllowed(pathname: string): boolean {
+  return (
+    pathname === "/api/marketplace/rewards" ||
+    pathname.startsWith("/api/marketplace/rewards/")
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -93,7 +104,8 @@ export async function middleware(request: NextRequest) {
 
     if (pathname.startsWith("/login")) {
       if (session.isAuthenticated) {
-        return NextResponse.redirect(new URL("/", request.url));
+        const dest = effectiveRole(session) === "uploader" ? "/rewards" : "/";
+        return NextResponse.redirect(new URL(dest, request.url));
       }
       return NextResponse.next();
     }
@@ -104,6 +116,24 @@ export async function middleware(request: NextRequest) {
 
     if (!session.isAuthenticated) {
       return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    if (effectiveRole(session) === "uploader") {
+      if (pathname.startsWith("/api/admin")) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      if (
+        pathname.startsWith("/api/marketplace") &&
+        !isUploaderMarketplaceAllowed(pathname)
+      ) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      if (
+        !pathname.startsWith("/api") &&
+        !isRewardsPagePath(pathname)
+      ) {
+        return NextResponse.redirect(new URL("/rewards", request.url));
+      }
     }
 
     return NextResponse.next();

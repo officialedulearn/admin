@@ -1,11 +1,15 @@
-import AuthLayout from "@/components/AuthLayout";
+import AuthLayoutClient from "@/components/AuthLayoutClient";
+import { getSession } from "@/lib/session";
+import type { AdminRole } from "@/lib/admin-session-types";
 
-export default function AuthenticatedLayout({
+export default async function AuthenticatedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <AuthLayout>{children}</AuthLayout>;
+  const session = await getSession();
+  const role: AdminRole = session.role ?? "admin";
+  return <AuthLayoutClient role={role}>{children}</AuthLayoutClient>;
 }
 
 

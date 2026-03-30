@@ -19,20 +19,16 @@ export default function LoginPage() {
     
     try {
       const result = await loginAction(formData);
-      
-      if (result?.error) {
+
+      if ("error" in result) {
         setError(result.error);
         setLoading(false);
         return;
       }
-      
-      if (result?.success) {
-        window.location.href = "/";
-        return;
-      }
-      
-      setError("Login failed. Please try again.");
-      setLoading(false);
+
+      window.location.href =
+        result.role === "uploader" ? "/rewards" : "/";
+      return;
     } catch (err: any) {
       const errorMessage = err?.message || String(err);
       

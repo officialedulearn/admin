@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/actions/auth";
+import type { AdminRole } from "@/lib/admin-session-types";
 
 const navItems = [
   {
@@ -81,7 +82,7 @@ const navItems = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ role = "admin" }: { role?: AdminRole }) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -93,6 +94,11 @@ export default function Sidebar() {
       setIsCollapsed(saved === "true");
     }
   }, []);
+
+  const visibleNav =
+    role === "uploader"
+      ? navItems.filter((item) => item.href === "/rewards")
+      : navItems;
 
   const toggleCollapse = () => {
     const newState = !isCollapsed;
@@ -148,7 +154,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto custom-scrollbar">
-        {navItems.map((item) => {
+        {visibleNav.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
           return (
