@@ -39,6 +39,12 @@ export function validateConfig() {
       errors.push("ADMIN_PASSWORD_HASH is not set - authentication will not work");
     }
 
+    if (!process.env.UPLOADER_PASSWORD_HASH) {
+      warnings.push(
+        "UPLOADER_PASSWORD_HASH is not set - uploader-only login is disabled"
+      );
+    }
+
     if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
       errors.push("SESSION_SECRET must be at least 32 characters long");
     }

@@ -1,10 +1,8 @@
 import { getIronSession, IronSession } from "iron-session";
 import { cookies } from "next/headers";
+import type { AdminRole, SessionData } from "./admin-session-types";
 
-export interface SessionData {
-  isAuthenticated: boolean;
-  loginTime?: number;
-}
+export type { AdminRole, SessionData };
 
 function getSessionSecret(): string {
   const secret = process.env.SESSION_SECRET;
@@ -39,10 +37,11 @@ export async function getSession(): Promise<IronSession<SessionData>> {
   return getIronSession<SessionData>(cookieStore, sessionOptions);
 }
 
-export async function createSession() {
+export async function createSession(role: AdminRole = "admin") {
   const session = await getSession();
   session.isAuthenticated = true;
   session.loginTime = Date.now();
+  session.role = role;
   await session.save();
 }
 
