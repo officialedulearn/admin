@@ -6,6 +6,22 @@ export interface EmailResult {
   total?: number;
 }
 
+export type NftListingItemPayload = {
+  header: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+};
+
+export type NftListingBroadcastPayload = {
+  subject: string;
+  previewText: string;
+  howToEarnText: string;
+  nfts: NftListingItemPayload[];
+  ctaUrl: string;
+  ctaLabel: string;
+};
+
 export type EngagementTemplateId =
   | "come-back-soon"
   | "refer-friends"
@@ -85,6 +101,44 @@ export const emailService = {
     const response = await axios.post(
       `/api/admin/emails/engagement/${template}/test`,
       { email, ...params }
+    );
+    return response.data;
+  },
+
+  async getNftListingBroadcastConfig(): Promise<NftListingBroadcastPayload> {
+    const response = await axios.get<NftListingBroadcastPayload>(
+      "/api/admin/emails/nft-listing/config"
+    );
+    return response.data;
+  },
+
+  async getNftListingPreview(
+    payload: Partial<NftListingBroadcastPayload>
+  ): Promise<string> {
+    const response = await axios.post<{ html: string }>(
+      "/api/admin/emails/nft-listing/preview",
+      payload
+    );
+    return response.data.html;
+  },
+
+  async sendNftListingTest(
+    email: string,
+    payload: Partial<NftListingBroadcastPayload>
+  ): Promise<{ sent: boolean }> {
+    const response = await axios.post("/api/admin/emails/nft-listing/test", {
+      email,
+      ...payload,
+    });
+    return response.data;
+  },
+
+  async broadcastNftListing(
+    payload?: Partial<NftListingBroadcastPayload>
+  ): Promise<EmailResult> {
+    const response = await axios.post(
+      "/api/admin/emails/nft-listing/broadcast",
+      payload ?? {}
     );
     return response.data;
   },
