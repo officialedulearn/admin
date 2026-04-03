@@ -5,7 +5,13 @@ import { Mail, Send, Users, User, Loader2, Eye, EyeOff, Search, CheckCircle2 } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { emailService, type EngagementTemplateId } from "@/services/email.service";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  emailService,
+  type EngagementTemplateId,
+  type NftListingBroadcastPayload,
+  type NftListingItemPayload,
+} from "@/services/email.service";
 import { adminService, type AdminUser } from "@/services/admin.service";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -47,9 +53,38 @@ export default function EmailsPage() {
   const [engagementPreviewCount, setEngagementPreviewCount] = useState(5);
   const [engagementTestEmail, setEngagementTestEmail] = useState("");
   const [engagementLoading, setEngagementLoading] = useState(false);
+  const emptyNftItem = (): NftListingItemPayload => ({
+    header: "",
+    title: "",
+    description: "",
+    imageUrl: "",
+  });
+  const emptyNftListing = (): NftListingBroadcastPayload => ({
+    subject: "",
+    previewText: "",
+    howToEarnText: "",
+    nfts: [emptyNftItem()],
+    ctaUrl: "",
+    ctaLabel: "",
+  });
+  const [nftListing, setNftListing] = useState<NftListingBroadcastPayload>(emptyNftListing);
+  const [nftListingPreviewHtml, setNftListingPreviewHtml] = useState<string | null>(null);
+  const [nftListingTestEmail, setNftListingTestEmail] = useState("");
+  const [nftListingLoading, setNftListingLoading] = useState(false);
 
   useEffect(() => {
     loadUsers();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const cfg = await emailService.getNftListingBroadcastConfig();
+        setNftListing(cfg);
+      } catch {
+        /* ignore */
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -348,6 +383,233 @@ export default function EmailsPage() {
               Broadcast to All
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-[#00FF80]/30 bg-card/50">
+        <CardHeader>
+          <CardTitle className="text-[#00FF80]">🏆 New NFT listing broadcast</CardTitle>
+          <CardDescription>
+            Edit fields below (defaults load from{" "}
+            <code className="text-xs">api/src/emails/nft-listing-announcement.config.ts</code>). Resend
+            broadcast uses your audience; greeting uses{" "}
+            <code className="text-xs">{"{{{FIRST_NAME}}}"}</code> when sent.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Subject</label>
+              <Input
+                value={nftListing.subject}
+                onChange={(e) => setNftListing((p) => ({ ...p, subject: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Preview text (inbox snippet)</label>
+              <Input
+                value={nftListing.previewText}
+                onChange={(e) => setNftListing((p) => ({ ...p, previewText: e.target.value }))}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1">How to earn an NFT</label>
+              <Textarea
+                value={nftListing.howToEarnText}
+                onChange={(e) => setNftListing((p) => ({ ...p, howToEarnText: e.target.value }))}
+                className="min-h-[72px]"
+              />
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-medium">NFTs (image left, header + title + description)</label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setNftListing((p) => ({ ...p, nfts: [...p.nfts, emptyNftItem()] }))
+                }
+              >
+                Add NFT
+              </Button>
+            </div>
+            {nftListing.nfts.map((nft, idx) => (
+              <div
+                key={idx}
+                className="rounded-lg border border-border p-4 space-y-3 bg-secondary/30"
+              >
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">NFT {idx + 1}</span>
+                  {nftListing.nfts.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive h-8"
+                      onClick={() =>
+                        setNftListing((p) => ({
+                          ...p,
+                          nfts: p.nfts.filter((_, i) => i !== idx),
+                        }))
+                      }
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">Header</label>
+                    <Input
+                      value={nft.header}
+                      onChange={(e) =>
+                        setNftListing((p) => {
+                          const nfts = [...p.nfts];
+                          nfts[idx] = { ...nfts[idx], header: e.target.value };
+                          return { ...p, nfts };
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">Title</label>
+                    <Input
+                      value={nft.title}
+                      onChange={(e) =>
+                        setNftListing((p) => {
+                          const nfts = [...p.nfts];
+                          nfts[idx] = { ...nfts[idx], title: e.target.value };
+                          return { ...p, nfts };
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs text-muted-foreground mb-1">Description</label>
+                    <Textarea
+                      value={nft.description}
+                      onChange={(e) =>
+                        setNftListing((p) => {
+                          const nfts = [...p.nfts];
+                          nfts[idx] = { ...nfts[idx], description: e.target.value };
+                          return { ...p, nfts };
+                        })
+                      }
+                      className="min-h-[72px]"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs text-muted-foreground mb-1">Image URL</label>
+                    <Input
+                      value={nft.imageUrl}
+                      onChange={(e) =>
+                        setNftListing((p) => {
+                          const nfts = [...p.nfts];
+                          nfts[idx] = { ...nfts[idx], imageUrl: e.target.value };
+                          return { ...p, nfts };
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">CTA URL</label>
+              <Input
+                value={nftListing.ctaUrl}
+                onChange={(e) => setNftListing((p) => ({ ...p, ctaUrl: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">CTA label</label>
+              <Input
+                value={nftListing.ctaLabel}
+                onChange={(e) => setNftListing((p) => ({ ...p, ctaLabel: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  setNftListingLoading(true);
+                  const html = await emailService.getNftListingPreview(nftListing);
+                  setNftListingPreviewHtml(html);
+                } catch (err) {
+                  toast.error("Failed to load preview");
+                  console.error(err);
+                } finally {
+                  setNftListingLoading(false);
+                }
+              }}
+              disabled={nftListingLoading}
+            >
+              {nftListingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4 mr-1" />}
+              Preview
+            </Button>
+            <Input
+              type="email"
+              placeholder="Test email"
+              value={nftListingTestEmail}
+              onChange={(e) => setNftListingTestEmail(e.target.value)}
+              className="w-48"
+            />
+            <Button
+              variant="outline"
+              onClick={async () => {
+                if (!nftListingTestEmail.trim()) {
+                  toast.error("Enter email for test");
+                  return;
+                }
+                try {
+                  setNftListingLoading(true);
+                  await emailService.sendNftListingTest(nftListingTestEmail.trim(), nftListing);
+                  toast.success(`Test sent to ${nftListingTestEmail}`);
+                } catch (err) {
+                  toast.error("Failed to send test");
+                  console.error(err);
+                } finally {
+                  setNftListingLoading(false);
+                }
+              }}
+              disabled={nftListingLoading}
+            >
+              Send test
+            </Button>
+            <Button
+              variant="success"
+              onClick={async () => {
+                try {
+                  setNftListingLoading(true);
+                  const result = await emailService.broadcastNftListing(nftListing);
+                  toast.success(
+                    `NFT listing broadcast queued. ~${result.sent} contacts (Total: ${result.total ?? result.sent})`
+                  );
+                } catch (err) {
+                  toast.error("Failed to broadcast");
+                  console.error(err);
+                } finally {
+                  setNftListingLoading(false);
+                }
+              }}
+              disabled={nftListingLoading}
+            >
+              {nftListingLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+              Broadcast (Resend)
+            </Button>
+          </div>
+          {nftListingPreviewHtml && (
+            <div
+              className="border border-border rounded-lg p-4 min-h-[200px] bg-white text-black overflow-auto max-h-[480px]"
+              dangerouslySetInnerHTML={{ __html: nftListingPreviewHtml }}
+            />
+          )}
         </CardContent>
       </Card>
 
