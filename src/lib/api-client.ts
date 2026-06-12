@@ -7,6 +7,7 @@ interface RetryConfig extends InternalAxiosRequestConfig {
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
+const NON_RETRYABLE_STATUSES = new Set([401, 403, 404, 408, 409, 422, 429, 504]);
 
 function createApiClient(): AxiosInstance {
   const client = axios.create({
@@ -49,7 +50,9 @@ function createApiClient(): AxiosInstance {
 
       const shouldRetry =
         config._retryCount < MAX_RETRIES &&
-        (!error.response || error.response.status >= 500);
+        (!error.response ||
+          (error.response.status >= 500 &&
+            !NON_RETRYABLE_STATUSES.has(error.response.status)));
 
       if (shouldRetry) {
         config._retryCount++;
